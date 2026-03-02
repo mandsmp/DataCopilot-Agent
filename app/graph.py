@@ -10,6 +10,8 @@ llm = get_llm()
 # Planner Node
 # -------------------
 def planner_node(state: AgentState):
+    print(">> Planner executado")
+
     prompt = f"""
     Você é um analista de dados.
 
@@ -37,18 +39,25 @@ def planner_node(state: AgentState):
 
     response = llm.invoke(prompt)
 
+    print("RAW LLM RESPONSE:", response.content)
+
     try:
-        plan = json.loads(response.content)
-    except:
+        cleaned = response.content.strip()
+        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+        plan = json.loads(cleaned)
+    except Exception as e:
+        print("JSON ERROR:", e)
         plan = {"action": "summarize", "parameters": {}}
 
-    return {"plan": plan}
+    state["plan"] = plan
+    return state
 
 
 # -------------------
 # Tool Node
 # -------------------
 def tool_node(state: AgentState):
+    print(">> Tool node executado")
 
     plan = state["plan"]
     action = plan.get("action")
@@ -72,27 +81,36 @@ def tool_node(state: AgentState):
     else:
         result = "Erro: ação não reconhecida."
 
-    return {"tool_result": result}
+    state["tool_result"] = result
+    return state
 
 
 # -------------------
 # Responder Node
 # -------------------
 def responder_node(state: AgentState):
+    print(">> Responder executado")
+    print("DEBUG TOOL RESULT:", state["tool_result"])
 
     prompt = f"""
-    Pergunta do usuário:
+    Você é um analista de dados sênior.
+
+    Pergunta:
     {state['question']}
 
     Resultado da análise:
     {state['tool_result']}
 
-    Explique de forma clara para um público de negócio.
+    Use EXPLICITAMENTE o valor numérico retornado.
+    Não explique conceitos genéricos.
+    Interprete o número e diga o que ele significa para o negócio.
+    Seja direto e objetivo.
     """
 
     response = llm.invoke(prompt)
 
-    return {"final_answer": response.content}
+    state["final_answer"] = response.content
+    return state
 
 
 # -------------------

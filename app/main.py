@@ -4,7 +4,7 @@ from graph import app
 import tools
 
 initial_state = {
-    "question": "Preço impacta vendas?",
+    "question": "Qual a correlação entre AveragePrice e TotalVolume?",
     "dataframe_summary": tools.summarize_dataframe(),
     "plan": {},
     "tool_result": "",
