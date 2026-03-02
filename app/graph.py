@@ -3,8 +3,22 @@ from langgraph.graph import StateGraph, END
 from llm import get_llm
 from state import AgentState
 import tools
+from pydantic import BaseModel
+from typing import Optional, Literal
 
-llm = get_llm()
+
+class Plan(BaseModel):
+    action: Literal["summarize", "correlation", "regression"]
+    col1: Optional[str] = None
+    col2: Optional[str] = None
+    target: Optional[str] = None
+    feature: Optional[str] = None
+
+
+base_llm = get_llm()
+
+planner_llm = base_llm.with_structured_output(Plan)
+responder_llm = base_llm
 
 # -------------------
 # Planner Node
@@ -22,36 +36,15 @@ def planner_node(state: AgentState):
     - summarize
     - correlation
     - regression
-
-    Se correlation, use parâmetros:
-      col1, col2
-
-    Se regression, use parâmetros:
-      target, feature
-
-    Retorne APENAS JSON válido no formato:
-
-    {{
-      "action": "...",
-      "parameters": {{...}}
-    }}
     """
 
-    response = llm.invoke(prompt)
+    result = planner_llm.invoke(prompt)
 
-    print("RAW LLM RESPONSE:", response.content)
+    plan = result.parsed if hasattr(result, "parsed") else result
 
-    try:
-        cleaned = response.content.strip()
-        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
-        plan = json.loads(cleaned)
-    except Exception as e:
-        print("JSON ERROR:", e)
-        plan = {"action": "summarize", "parameters": {}}
-
-    state["plan"] = plan
-    return state
-
+    return {
+        "plan": plan.model_dump()
+    }
 
 # -------------------
 # Tool Node
@@ -60,22 +53,21 @@ def tool_node(state: AgentState):
     print(">> Tool node executado")
 
     plan = state["plan"]
-    action = plan.get("action")
-    params = plan.get("parameters", {})
+    action = plan["action"]
 
     if action == "summarize":
         result = tools.summarize_dataframe()
 
     elif action == "correlation":
         result = tools.correlation_matrix(
-            col1=params.get("col1"),
-            col2=params.get("col2")
+            col1=plan.get("col1"),
+            col2=plan.get("col2")
         )
 
     elif action == "regression":
         result = tools.run_linear_regression(
-            target=params.get("target"),
-            feature=params.get("feature")
+            target=plan.get("target"),
+            feature=plan.get("feature")
         )
 
     else:
@@ -83,8 +75,6 @@ def tool_node(state: AgentState):
 
     state["tool_result"] = result
     return state
-
-
 # -------------------
 # Responder Node
 # -------------------
@@ -107,7 +97,7 @@ def responder_node(state: AgentState):
     Seja direto e objetivo.
     """
 
-    response = llm.invoke(prompt)
+    response = responder_llm.invoke(prompt)
 
     state["final_answer"] = response.content
     return state
