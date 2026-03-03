@@ -34,7 +34,7 @@ def run_linear_regression(df, target: str, feature: str):
 
     model = sm.OLS(y, X).fit()
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5,3))
     sns.regplot(data=df, x=feature, y=target, ax=ax)
     ax.set_title(f"R² = {model.rsquared:.3f}")
 

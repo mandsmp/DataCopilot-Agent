@@ -12,7 +12,7 @@ from app.graph import app
 st.set_page_config(page_title="DataCopilot", layout="wide")
 
 st.title("📊 DataCopilot")
-st.write("Faça perguntas sobre seus dados CSV usando IA.")
+st.write("Faça perguntas sobre seus dados usando IA.")
 
 uploaded_file = st.file_uploader("Envie seu arquivo CSV", type=["csv"])
 
@@ -47,8 +47,4 @@ if uploaded_file is not None:
             analysis = result["analysis_output"]
 
             if "figure" in analysis:
-                st.pyplot(analysis["figure"])
-
-            if "metrics" in analysis:
-                st.subheader("📊 Métricas")
-                st.json(analysis["metrics"])
+                st.pyplot(analysis["figure"], use_container_width = False)
