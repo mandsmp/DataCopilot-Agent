@@ -29,13 +29,25 @@ def planner_node(state: AgentState):
     prompt = f"""
     Você é um analista de dados.
 
-    Pergunta: {state['question']}
-    Dados disponíveis: {state['dataframe_summary']}
+    Pergunta do usuário:
+    {state['question']}
+
+    Colunas disponíveis no dataframe:
+    {list(state['dataframe'].columns)}
 
     Escolha UMA ação:
     - summarize
     - correlation
     - regression
+
+    Se for correlation:
+    - preencha col1 e col2
+
+    Se for regression:
+    - preencha target (variável dependente Y)
+    - preencha feature (variável independente X)
+
+    Retorne apenas os campos do modelo estruturado.
     """
 
     result = planner_llm.invoke(prompt)
@@ -53,27 +65,36 @@ def tool_node(state: AgentState):
     print(">> Tool node executado")
 
     plan = state["plan"]
+    df = state["dataframe"]  
     action = plan["action"]
 
     if action == "summarize":
-        result = tools.summarize_dataframe()
+        result = tools.summarize_dataframe(df)
 
     elif action == "correlation":
         result = tools.correlation_matrix(
+            df,
             col1=plan.get("col1"),
             col2=plan.get("col2")
         )
 
     elif action == "regression":
         result = tools.run_linear_regression(
+            df,
             target=plan.get("target"),
             feature=plan.get("feature")
         )
 
     else:
-        result = "Erro: ação não reconhecida."
+        result = {"error": "Ação não reconhecida."}
 
-    state["tool_result"] = result
+    state["analysis_output"] = result
+
+    if isinstance(result, dict) and "metrics" in result:
+        state["tool_result"] = result["metrics"]
+    else:
+        state["tool_result"] = result
+
     return state
 # -------------------
 # Responder Node

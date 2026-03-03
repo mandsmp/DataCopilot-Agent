@@ -27,15 +27,28 @@ if uploaded_file is not None:
     if question:
         with st.spinner("Analisando..."):
             initial_state = {
-                "question": question,
-                "dataframe_summary": str(df.describe()),
-                "plan": {},
-                "tool_result": "",
-                "final_answer": "",
-                "iterations": 0,
+            "question": question,
+            "dataframe": df,   
+            "dataframe_summary": str(df.describe()),
+            "plan": {},
+            "tool_result": None,
+            "final_answer": "",
+            "analysis_output": None,
+            "iterations": 0,
             }
 
             result = app.invoke(initial_state)
 
         st.subheader("Resposta")
         st.success(result["final_answer"])
+
+        if "analysis_output" in result and result["analysis_output"]:
+
+            analysis = result["analysis_output"]
+
+            if "figure" in analysis:
+                st.pyplot(analysis["figure"])
+
+            if "metrics" in analysis:
+                st.subheader("📊 Métricas")
+                st.json(analysis["metrics"])
